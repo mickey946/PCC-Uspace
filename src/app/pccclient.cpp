@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <signal.h>
+#include <chrono>
 
 #ifndef WIN32
 #include <cstdlib>
@@ -33,6 +34,18 @@ int main(int argc, char* argv[]) {
     cout << "usage: " << argv[0] << " <send|recv> server_ip server_port";
     cout << endl;
     return 0;
+  }
+
+  bool is_finite = argc > 4;
+  int duration = -1;
+
+  if (is_finite) {
+    duration = atoi(argv[4]);
+
+    if (0 == duration) {
+      cout << "Invalid duration " << argv[4] << endl;
+      return 0;
+    }
   }
 
   bool should_send = !strcmp(argv[1], "send");
@@ -93,8 +106,16 @@ int main(int argc, char* argv[]) {
   CreateThread(NULL, 0, monitor, &client, 0, NULL);
 #endif
 
+  chrono::system_clock::time_point begin;
+  chrono::system_clock::time_point current;
+  chrono::duration<double> elapsed_seconds;
+
+  if (is_finite) {
+    begin = chrono::system_clock::now();
+  }
+
   if (should_send) {
-    while (true) {
+    do {
       int ssize = 0;
       int ss;
       while (ssize < size) {
@@ -110,9 +131,13 @@ int main(int argc, char* argv[]) {
       if (ssize < size) {
         break;
       }
-    }
+
+      current = chrono::system_clock::now();
+      elapsed_seconds = current - begin;
+
+    } while (!is_finite || elapsed_seconds.count() < duration);
   } else {
-    while (true) {
+    do {
       int rsize = 0;
       int rs;
       while (rsize < size) {
@@ -128,7 +153,11 @@ int main(int argc, char* argv[]) {
       if (rsize < size) {
         break;
       }
-    }
+      
+      current = chrono::system_clock::now();
+      elapsed_seconds = current - begin;
+      
+    } while (!is_finite || elapsed_seconds.count() < duration); 
   }
 
   UDT::close(client);
